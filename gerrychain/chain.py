@@ -30,10 +30,13 @@ class MarkovChain:
 
         """
         if callable(constraints):
+            # constraints can take the form of some function
             is_valid = constraints
         else:
+            # constraints can take the form of params, which will be wrapped by a function
             is_valid = Validator(constraints)
 
+        # this is just error handling to determine whether or not the constraints are valid
         if not is_valid(initial_state):
             failed = [
                 constraint
@@ -45,6 +48,8 @@ class MarkovChain:
                 "The failed constraints were: " + ",".join([f.__name__ for f in failed])
             )
             raise ValueError(message)
+
+        # at this point, we assume that the constraints are valid
 
         self.proposal = proposal
         self.is_valid = is_valid
@@ -59,16 +64,20 @@ class MarkovChain:
         return self
 
     def __next__(self):
+        # if we're in the initial state, assume that the preset state is appropriate
         if self.counter == 0:
             self.counter += 1
             return self.state
 
+        # this loops until either the total number of iterations meets total_steps, or some proposed next state is invalid
         while self.counter < self.total_steps:
             proposed_next_state = self.proposal(self.state)
             # Erase the parent of the parent, to avoid memory leak
             self.state.parent = None
 
+            # if proposed next state is not valid, then fall through the outer if statement-- which will stop the iteration by raising an exception
             if self.is_valid(proposed_next_state):
+                # if we can accept the next state, then do so; otherwise, ignore and just increment the counter
                 if self.accept(proposed_next_state):
                     self.state = proposed_next_state
                 self.counter += 1

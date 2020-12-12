@@ -98,6 +98,7 @@ class Partition:
         """
         return self.assignment[edge[0]] != self.assignment[edge[1]]
 
+    # overload the bracket operator to retrieve a particular updater
     def __getitem__(self, key):
         """Allows accessing the values of updaters computed for this
         Partition instance.

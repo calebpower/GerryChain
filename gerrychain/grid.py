@@ -62,24 +62,29 @@ class Grid(Partition):
             configures the cut_edges updater for convenience.
         """
         if dimensions:
+            # if the dimensions are explicitly set, then use those dimensions and create a grid graph accordingly
             self.dimensions = dimensions
             graph = create_grid_graph(dimensions, with_diagonals)
 
             if not assignment:
+                # if the assignment is not set, auto-generate them (bicolored)
                 thresholds = tuple(math.floor(n / 2) for n in self.dimensions)
                 assignment = {
                     node: color_quadrants(node, thresholds) for node in graph.nodes
                 }
 
             if not updaters:
+                # if the updaters aren't set, create them (empty dictionary)
                 updaters = dict()
             updaters.update(self.default_updaters)
 
             super().__init__(graph, assignment, updaters)
         elif parent:
+            # if the dimensions are not explicitly set, then assume the dimensions of the parent if the parent exists
             self.dimensions = parent.dimensions
             super().__init__(parent=parent, flips=flips)
         else:
+            # if the dimensions are not explicitly set and no parent exists, throw an exception-- dimensions are too arbitrary
             raise Exception("Not a good way to create a Partition")
 
     def __str__(self):
@@ -104,6 +109,7 @@ class Grid(Partition):
 
 def create_grid_graph(dimensions, with_diagonals):
     if len(dimensions) != 2:
+        # two dimensions must be specified (m and n)
         raise ValueError("Expected two dimensions.")
     m, n = dimensions
     graph = networkx.generators.lattice.grid_2d_graph(m, n)
@@ -111,14 +117,20 @@ def create_grid_graph(dimensions, with_diagonals):
     networkx.set_edge_attributes(graph, 1, "shared_perim")
 
     if with_diagonals:
+        # creates an array of tuples, one for each node in the graph
+        # each tuple has two values; the first denotes the indices of the "current" node, the second denotes the indices of the node immediately to the SE (queen's move)
         nw_to_se = [
             ((i, j), (i + 1, j + 1)) for i in range(m - 1) for j in range(n - 1)
         ]
+        # creates an array of tuples, one for each node in the graph
+        # each tuple has two values; the first denotes the indices of the "current" node, the second denotes the indices of the node immediately to the NE (queen's move)
         sw_to_ne = [
             ((i, j + 1), (i + 1, j)) for i in range(m - 1) for j in range(n - 1)
         ]
+        # diagonal_edges = concatenation of nw_to_se and sw_to_ne
         diagonal_edges = nw_to_se + sw_to_ne
         graph.add_edges_from(diagonal_edges)
+        # queen's movement indicates that nodes share an edge on a point
         for edge in diagonal_edges:
             graph.edges[edge]["shared_perim"] = 0
 
@@ -131,6 +143,7 @@ def create_grid_graph(dimensions, with_diagonals):
 
 
 def give_constant_attribute(graph, attribute, value):
+    # for every node in the graph, set its attribute to the provided value
     for node in graph.nodes:
         graph.nodes[node][attribute] = value
 
@@ -138,6 +151,7 @@ def give_constant_attribute(graph, attribute, value):
 def tag_boundary_nodes(graph, dimensions):
     m, n = dimensions
     for node in graph.nodes:
+        # check if the coordinates lie on the edge of the graph; if so, note that they are boundary nodes
         if node[0] in [0, m - 1] or node[1] in [0, n - 1]:
             graph.nodes[node]["boundary_node"] = True
             graph.nodes[node]["boundary_perim"] = get_boundary_perim(node, dimensions)
@@ -148,10 +162,13 @@ def tag_boundary_nodes(graph, dimensions):
 def get_boundary_perim(node, dimensions):
     m, n = dimensions
     if node in [(0, 0), (m - 1, 0), (0, n - 1), (m - 1, n - 1)]:
+        # if the node is on the corner, return enum 2
         return 2
     elif node[0] in [0, m - 1] or node[1] in [0, n - 1]:
+        # if node is on the edge but not on the corner, return enum 1
         return 1
     else:
+        # all nodes that are not on the edge and do not represent a corner, return enum 0
         return 0
 
 
